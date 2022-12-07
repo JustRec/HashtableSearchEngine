@@ -48,11 +48,20 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 	}
 
 	public V add(K key, V value) {
+		if ((int) key == 49) {
+			System.out.println();
+		}
 		V oldValue;
 		if (isHashTableTooFull())
 			rehash();
+
 		int index = getHashIndex(key);
-		index = probe(index, key);
+		index = probe(index, value);
+		
+
+		if (index == 50) {
+			System.out.println();
+		}
 
 		if ((hashTable[index] == null) || hashTable[index].isRemoved()) {
 			hashTable[index] = new TableEntry<K, V>(key, value);
@@ -98,16 +107,24 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 		}
 	}
 
-	private int probe(int index, K key) {
+	private int probe(int index, V value) {
 		boolean found = false;
 		int removedStateIndex = -1;
 		while (!found && (hashTable[index] != null)) {
 			if (hashTable[index].isIn()) {
-				if (key.equals(hashTable[index].getKey()))
+
+				Data data = (Data)value;
+				String givenWord = data.getWord();
+
+				data = (Data)hashTable[index].getValue();
+				String wordInTable = data.getWord();
+
+				if (givenWord.equals(wordInTable))
 					found = true;
 				else
 					index = (index + 1) % hashTable.length;
-			} else {
+			} 
+			else {
 				if (removedStateIndex == -1)
 					removedStateIndex = index;
 				index = (index + 1) % hashTable.length;
@@ -215,10 +232,6 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 
 		private void setToRemoved() {
 			inTable = false;
-		}
-
-		private void setToIn() {
-			inTable = true;
 		}
 
 		private boolean isIn() {
