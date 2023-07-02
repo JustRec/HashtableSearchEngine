@@ -7,8 +7,11 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 	private TableEntry<K, V>[] hashTable;
 	private int numberOfEntries;
 	private int locationsUsed;
-	private static final int DEFAULT_SIZE = 101;
-	private static final double MAX_LOAD_FACTOR = 0.5;
+	private static final int DEFAULT_SIZE = 2477;
+	public static double maxLoadFactor = 0.5;
+	public static String hashing = "SSF";
+	public static String collisionHandling = "LP";
+	private static int collisionCount;
 
 	public HashedDictionary() {
 		this(DEFAULT_SIZE);
@@ -48,20 +51,12 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 	}
 
 	public V add(K key, V value) {
-		if ((int) key == 49) {
-			System.out.println();
-		}
 		V oldValue;
 		if (isHashTableTooFull())
 			rehash();
 
 		int index = getHashIndex(key);
-		index = probe(index, value);
-		
-
-		if (index == 50) {
-			System.out.println();
-		}
+		index = probe(index, key);
 
 		if ((hashTable[index] == null) || hashTable[index].isRemoved()) {
 			hashTable[index] = new TableEntry<K, V>(key, value);
@@ -76,15 +71,43 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 	}
 
 	private int getHashIndex(K key) {
-		int hashIndex = key.hashCode() % hashTable.length;
+		int hashIndex;
+		if (hashing.equals("SSF"))
+			hashIndex = simpleSum((String) key) % hashTable.length;
+		else
+			hashIndex = PAF((String) key) % hashTable.length;
+
 		if (hashIndex < 0)
 			hashIndex = hashIndex + hashTable.length;
 		return hashIndex;
 	}
 
+	private int doubleHashing(K key) {
+		int hashIndex = getHashIndex(key);
+		return 31 - hashIndex % 31;
+	}
+
+	private Integer simpleSum(String word) {
+		int key = 0;
+		char[] letters = word.toCharArray();
+		for (int i = 0; i < letters.length; i++) {
+			key += (int) letters[i] - 96;
+		}
+		return key;
+	}
+
+	private Integer PAF(String word) {
+		int key = 0;
+		char[] letters = word.toCharArray();
+		for (int i = 0; i < letters.length; i++) {
+			key += ((int) letters[i] - 96) * Math.pow(31, letters.length - (i + 1));
+		}
+		return key;
+	}
+
 	public boolean isHashTableTooFull() {
 		int load_factor = locationsUsed / hashTable.length;
-		if (load_factor >= MAX_LOAD_FACTOR)
+		if (load_factor >= maxLoadFactor)
 			return true;
 		return false;
 	}
@@ -107,24 +130,20 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 		}
 	}
 
-	private int probe(int index, V value) {
+	private int probe(int index, K key) {
 		boolean found = false;
 		int removedStateIndex = -1;
 		while (!found && (hashTable[index] != null)) {
 			if (hashTable[index].isIn()) {
-
-				Data data = (Data)value;
-				String givenWord = data.getWord();
-
-				data = (Data)hashTable[index].getValue();
-				String wordInTable = data.getWord();
-
-				if (givenWord.equals(wordInTable))
+				if (key.equals(hashTable[index].getKey()))
 					found = true;
-				else
-					index = (index + 1) % hashTable.length;
-			} 
-			else {
+				else{
+					if(collisionHandling.equals("LP"))
+						index = (index + 1) % hashTable.length;
+					else
+						index = (index + doubleHashing(key)) % hashTable.length;
+				}
+			} else {
 				if (removedStateIndex == -1)
 					removedStateIndex = index;
 				index = (index + 1) % hashTable.length;
@@ -155,8 +174,14 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 		while (!found && (hashTable[index] != null)) {
 			if (hashTable[index].isIn() && key.equals(hashTable[index].getKey()))
 				found = true;
-			else
-				index = (index + 1) % hashTable.length;
+			else{
+				collisionCount++;
+				if(collisionHandling.equals("LP"))
+					index = (index + 1) % hashTable.length;
+				else
+					index = (index + doubleHashing(key)) % hashTable.length;
+			}
+			
 		}
 		int result = -1;
 		if (found)
@@ -187,6 +212,12 @@ public class HashedDictionary<K, V> implements DictionaryInterface<K, V> {
 
 	public int getSize() {
 		return numberOfEntries;
+	}
+
+	public int getCollisionCount() {
+		int value = collisionCount;
+		collisionCount = 0;
+		return value;
 	}
 
 	public void clear() {
